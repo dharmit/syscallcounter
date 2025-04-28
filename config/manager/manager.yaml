@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: controller-manager
+    app.kubernetes.io/name: syscallcounter
+    app.kubernetes.io/managed-by: kustomize
+  name: system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: controller-manager
+  namespace: syscallcounter-system
+  labels:
+    control-plane: controller-manager
+    app.kubernetes.io/name: syscallcounter
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+      app.kubernetes.io/name: syscallcounter
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        control-plane: controller-manager
+        app.kubernetes.io/name: syscallcounter
+    spec:
+#      securityContext:
+#        # Projects are configured by default to adhere to the "restricted" Pod Security Standards.
+#        # This ensures that deployments meet the highest security requirements for Kubernetes.
+#        # For more details, see: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
+#        runAsNonRoot: true
+#        seccompProfile:
+#          type: RuntimeDefault
+      containers:
+      - command:
+        - /manager
+        args:
+          - --leader-elect
+          - --health-probe-bind-address=:8081
+        image: dharmit/syscallcounter:latest
+        imagePullPolicy: IfNotPresent
+        name: manager
+        ports: []
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+              - SYS_ADMIN  # Often needed for loading/attaching BPF
+              - BPF        # Specific BPF capability
+              - PERFMON    # Often needed for perf event/tracepoint access
+              - SYS_RESOURCE
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        # TODO(user): Configure the resources accordingly based on the project requirements.
+        # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        volumeMounts:
+          - name: kernel-modules
+            mountPath: /lib/modules
+            readOnly: true
+          - name: bpf-fs
+            mountPath: /sys/fs/bpf
+          - name: kernel-debugfs
+            mountPath: /sys/kernel/debug
+      volumes:
+        - name: kernel-modules
+          hostPath:
+            path: /mnt/lib/modules
+            type: Directory
+        - name: bpf-fs
+          hostPath:
+            path: /mnt/sys/fs/bpf
+            type: Directory
+        - name: kernel-debugfs
+          hostPath:
+            path: /mnt/sys/kernel/debug
+            type: Directory
+      serviceAccountName: controller-manager
+      terminationGracePeriodSeconds: 10

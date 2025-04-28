@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - syscallcounter.dharmitshah.com
+  resources:
+  - syscallcounters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - syscallcounter.dharmitshah.com
+  resources:
+  - syscallcounters/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - syscallcounter.dharmitshah.com
+  resources:
+  - syscallcounters/status
+  verbs:
+  - get
+  - patch
+  - update

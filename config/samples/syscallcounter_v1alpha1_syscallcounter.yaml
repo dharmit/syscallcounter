@@ -1,0 +1,10 @@
+apiVersion: syscallcounter.dharmitshah.com/v1alpha1
+kind: SyscallCounter
+metadata:
+  labels:
+    app.kubernetes.io/name: syscallcounter
+    app.kubernetes.io/managed-by: kustomize
+  name: syscallcounter-sample
+spec:
+  podSelector: {}
+  syscall: "write"
