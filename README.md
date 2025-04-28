@@ -1,10 +1,19 @@
 # syscallcounter
-// TODO(user): Add simple overview of use/purpose
+The idea of this project is to have a Kubernetes Operator that would use eBPF probe to track the number of times a 
+syscall was called. All the C code in this repo was generated with the help of AI, and even that in `Reconcile` 
+function was aided a lot by AI.
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+Currently, there are following issues with the project:
+- [ ] Unable to keep a track of `execve` syscall
+- [ ] Unable to increment the counter for syscall.
+  - Counter gets reset each time `Reconcile` runs (which is every 5s right now)
+  - Removing `defer objs.Close()` and `defer tpLink.Close()` as suggested by AI causes the file 
+    `/sys/kernel/debug/tracing/trace_pipe` to get populated like crazy! Although, it's not so much of a disk issue 
+    as it's a CPU issue (at least when doing a `sudo cat /sys/kernel/debug/tracing/trace_pipe`).
 
-## Getting Started
+I'm neither a C nor an eBPF expert. The idea for this project came from recently hosting a maintainer of Falco 
+project in a [virtual meetup](https://www.youtube.com/watch?v=ehLVIi_fbEk&t=209s&pp=ygUcY25jZyBhaG1lZGFiYWQgcHJvamVjdHMgdG91cg%3D%3D). I have long been fascinated by low level 
+stuff, especially syscalls. 
 
 ### Prerequisites
 - go version v1.23.0+
@@ -15,8 +24,21 @@
 ### To Deploy on the cluster
 **Build and push your image to the location specified by `IMG`:**
 
+Run `go generate ./...` to build the object code:
+```shell
+$ go generate ./...
+```
+This will generate a `bpf_bpfel.o` file in `bpf` directory.
+
 ```sh
 make docker-build docker-push IMG=<some-registry>/syscallcounter:tag
+```
+
+Create a `kind` cluster using the YAML file (note that it requires mounting bunch of sensitive files to the k8s 
+cluster). You might also need to turn off SELinux or other setup running on your system:
+
+```shell
+$ kind create cluster --config kind-cluster-with-extramounts.yaml
 ```
 
 **NOTE:** This image ought to be published in the personal registry you specified.
